@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MineWeb — Minecraft w przeglądarce</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="hurt-overlay"></div>
+
+  <!-- ═══ START SCREEN ═══ -->
+  <div id="startScreen" class="screen">
+    <div class="screen-box">
+      <div class="logo">⛏️ MineWeb</div>
+      <div class="logo-sub">Minecraft w przeglądarce</div>
+
+      <!-- Logowanie (widoczne gdy niezalogowany) -->
+      <div id="loginRow" class="form-group">
+        <label>Login (zapis na serwerze)</label>
+        <div class="login-line">
+          <input type="text" id="loginInput" placeholder="nazwa gracza" maxlength="20" autocomplete="off">
+          <button id="loginBtn" class="btn-secondary">Zaloguj</button>
+        </div>
+        <div class="login-hint">3–20 znaków: litery, cyfry, _. Bez logowania grasz lokalnie.</div>
+      </div>
+
+      <!-- Konto + zapisy (widoczne gdy zalogowany) -->
+      <div id="accountBox" class="hidden">
+        <div class="account-row">Zalogowano: <b id="accName"></b>
+          <button id="logoutBtn" class="btn-link">wyloguj</button></div>
+        <div class="form-group">
+          <label>Tryb gry (zapamiętywany dla tego konta)</label>
+          <select id="gameModeSelect" class="slider">
+            <option value="survival">🟫 Survival</option>
+            <option value="creative">🟩 Creative</option>
+          </select>
+        </div>
+        <div id="savesPanel">
+          <div class="inv-title">Twoje zapisy</div>
+          <div id="savesList"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label id="newGameLabel">Nowa gra — seed świata</label>
+        <input type="text" id="seedInput" placeholder="(losowy)" maxlength="24" autocomplete="off">
+        <input type="text" id="saveNameInput" placeholder="nazwa zapisu (np. Mój świat)" maxlength="40" autocomplete="off" class="hidden">
+        <select id="worldType" class="slider" style="margin-top:.6rem">
+          <option value="normal">🌲 Świat normalny</option>
+          <option value="city">🏙️ Miasto</option>
+          <option value="space">🚀 Stacja kosmiczna</option>
+        </select>
+      </div>
+      <button id="playBtn" class="btn-primary">▶ NOWA GRA</button>
+      <div class="controls-hint">
+        WASD — ruch &nbsp;|&nbsp; Mysz — obrót &nbsp;|&nbsp; LPM — niszcz &nbsp;|&nbsp; PPM — stawiaj<br>
+        Spacja — skok &nbsp;|&nbsp; 2× Spacja — latanie &nbsp;|&nbsp; Shift — skradanie / w dół &nbsp;|&nbsp; F — stawiaj / C — niszcz &nbsp;|&nbsp; E — plecak / crafting &nbsp;|&nbsp; 1-9 — hotbar &nbsp;|&nbsp; Esc — pauza<br>
+        PPM na piec — otwórz piec &nbsp;|&nbsp; PPM z pszenicą/nasionami na zwierzę — karmienie &nbsp;|&nbsp; motyka na ziemię — grządka &nbsp;|&nbsp; uwaga na lawę i tonięcie!
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LOADING SCREEN ═══ -->
+  <div id="loadingScreen" class="screen hidden">
+    <div class="screen-box">
+      <div class="logo">⛏️ MineWeb</div>
+      <p id="loadStatus">Inicjalizacja...</p>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div id="loadProgress"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAUSE SCREEN ═══ -->
+  <div id="pauseScreen" class="screen hidden">
+    <div class="screen-box">
+      <h2>PAUZA</h2>
+      <button id="resumeBtn" class="btn-primary">▶ WRÓĆ DO GRY</button>
+      <button id="settingsBtn" class="btn-secondary">⚙ USTAWIENIA</button>
+      <button id="saveBtn" class="btn-secondary">💾 ZAPISZ ŚWIAT</button>
+      <div id="saveStatus" aria-live="polite"></div>
+      <button id="exitBtn" class="btn-danger">✕ MENU GŁÓWNE</button>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS SCREEN ═══ -->
+  <div id="settingsScreen" class="screen hidden">
+    <div class="screen-box">
+      <h2>USTAWIENIA</h2>
+      <div class="form-group">
+        <label>Pole widzenia (FOV) <span id="fovSliderVal" class="setting-val"></span></label>
+        <input type="range" id="fovSlider" class="slider">
+      </div>
+      <div class="form-group">
+        <label>Czułość myszy <span id="sensSliderVal" class="setting-val"></span></label>
+        <input type="range" id="sensSlider" class="slider">
+      </div>
+      <div class="form-group">
+        <label>Jasność <span id="brightSliderVal" class="setting-val"></span></label>
+        <input type="range" id="brightSlider" class="slider">
+      </div>
+      <div class="form-group">
+        <label>Odległość renderowania <span id="renderDistSliderVal" class="setting-val"></span></label>
+        <input type="range" id="renderDistSlider" class="slider">
+      </div>
+      <div class="form-group">
+        <label>Głośność dźwięków <span id="volumeSliderVal" class="setting-val"></span></label>
+        <input type="range" id="volumeSlider" class="slider">
+      </div>
+      <div class="form-group">
+        <label>Limit FPS <span id="fpsSelectVal" class="setting-val"></span></label>
+        <select id="fpsSelect" class="slider">
+          <option value="0">Bez limitu</option>
+          <option value="30">30</option>
+          <option value="60">60</option>
+          <option value="120">120</option>
+        </select>
+      </div>
+      <div class="form-group form-group-row">
+        <label for="hudToggle">Ukryj interfejs (HUD)</label>
+        <input type="checkbox" id="hudToggle">
+      </div>
+      <button id="settingsBackBtn" class="btn-primary">◀ WRÓĆ</button>
+    </div>
+  </div>
+
+  <!-- ═══ HUD ═══ -->
+  <div id="hud" class="hidden">
+    <div id="fps-counter">FPS: --</div>
+    <div id="coord-display">X:0 Y:0 Z:0</div>
+
+    <div id="crosshair">+</div>
+
+    <div id="status-bars">
+      <div id="air-bar"></div>
+      <div id="armor-bar"></div>
+      <div id="health-bar"></div>
+      <div id="hunger-bar"></div>
+    </div>
+
+    <div id="xp-bar"><div id="xp-fill"></div><span id="xp-level">0</span></div>
+
+    <div id="hotbar"></div>
+    <div id="selected-block-name"></div>
+
+    <div id="break-progress">
+      <div id="break-bar"></div>
+    </div>
+
+    <div id="chat-log"></div>
+  </div>
+
+  <input id="chat-input" type="text" maxlength="120" autocomplete="off" spellcheck="false"
+         placeholder="Wpisz wiadomość lub /komendę…" style="display:none">
+
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js"
+    }
+  }
+  </script>
+  <script type="module" src="js/main.js?v=29"></script>
+</body>
+</html>

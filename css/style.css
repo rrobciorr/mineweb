@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;user-select:none}
+#gameCanvas{display:block;width:100vw;height:100vh}
+/* Czerwony błysk przy obrażeniach */
+#hurt-overlay{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:0;
+  background:radial-gradient(ellipse at center,rgba(180,0,0,0) 45%,rgba(180,0,0,.85) 100%)}
+
+/* Czat: log + pole wpisywania */
+#chat-log{position:absolute;left:10px;bottom:90px;display:flex;flex-direction:column;gap:2px;
+  max-width:60vw;font-family:monospace;font-size:12px;pointer-events:none}
+.chat-line{background:rgba(0,0,0,.45);padding:2px 6px;border-radius:3px;color:#fff;
+  text-shadow:1px 1px #000;transition:opacity .6s;width:fit-content}
+#chat-input{position:fixed;left:10px;bottom:56px;width:60vw;z-index:60;
+  font-family:monospace;font-size:14px;padding:8px 10px;color:#fff;
+  background:rgba(0,0,0,.7);border:1px solid #6a6a8a;border-radius:3px;outline:none}
+
+/* ═══ SCREENS ═══ */
+.screen{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100
+}
+.screen.hidden{display:none}
+.screen-box{
+  background:rgba(20,20,20,.95);border:3px solid #555;border-radius:4px;
+  padding:2.5rem 2rem;max-width:420px;width:90%;text-align:center;
+  box-shadow:inset 0 0 30px rgba(0,0,0,.8),0 0 40px rgba(0,0,0,.6)
+}
+.logo{font-size:1.6rem;color:#f5c518;text-shadow:2px 2px #000,0 0 20px #f5c51866;margin-bottom:.4rem}
+.logo-sub{font-size:.5rem;color:#aaa;margin-bottom:2rem;letter-spacing:.1em}
+.screen-box h2{font-size:1.2rem;color:#f5c518;margin-bottom:1.5rem}
+.form-group{text-align:left;margin-bottom:1.5rem}
+.form-group label{display:block;font-size:.55rem;color:#aaa;margin-bottom:.5rem;letter-spacing:.05em}
+.form-group input{
+  width:100%;padding:.6rem .7rem;background:#111;border:2px solid #444;color:#fff;
+  font-family:'Press Start 2P',monospace;font-size:.65rem;border-radius:2px;outline:none
+}
+.form-group input:focus{border-color:#f5c518}
+.btn-primary,.btn-secondary,.btn-danger{
+  display:block;width:100%;padding:.7rem;font-family:'Press Start 2P',monospace;
+  font-size:.65rem;border:none;border-radius:2px;cursor:pointer;margin-bottom:.7rem;
+  letter-spacing:.05em;transition:filter .1s
+}
+.btn-primary{background:#5a8a2a;color:#fff}
+.btn-primary:hover{filter:brightness(1.2)}
+.btn-secondary{background:#2a4a8a;color:#fff}
+.btn-secondary:hover{filter:brightness(1.2)}
+.btn-danger{background:#8a2a2a;color:#fff}
+.btn-danger:hover{filter:brightness(1.2)}
+.controls-hint{font-size:.38rem;color:#666;line-height:1.8;margin-top:1rem}
+
+/* ═══ LOGOWANIE + ZAPISY ═══ */
+.hidden{display:none}
+#saveStatus{min-height:1.1rem;margin:.2rem 0 .6rem;font-size:.85rem;text-align:center;transition:opacity .2s}
+#saveStatus.saving{color:#f5c518}
+#saveStatus.ok{color:#5be05b}
+#saveStatus.err{color:#ff6a5a}
+.login-line{display:flex;gap:.5rem}
+.login-line input{flex:1}
+.login-line .btn-secondary{width:auto;margin:0;padding:.6rem .9rem;white-space:nowrap}
+.login-hint{font-size:.42rem;color:#666;margin-top:.4rem}
+.account-row{font-size:.55rem;color:#aaa;text-align:left;margin-bottom:.8rem}
+.account-row b{color:#f5c518}
+.btn-link{background:none;border:none;color:#7aa8ff;font-family:inherit;font-size:.5rem;cursor:pointer;text-decoration:underline;margin-left:.4rem}
+#savesList{text-align:left;max-height:180px;overflow-y:auto;margin-bottom:1rem}
+.save-item{display:flex;align-items:center;gap:.5rem;background:#161616;border:1px solid #333;
+  border-radius:3px;padding:.45rem .6rem;margin-bottom:.4rem}
+.save-item .save-meta{flex:1;min-width:0}
+.save-item .save-name{font-size:.6rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.save-item .save-date{font-size:.42rem;color:#777;margin-top:.2rem}
+.save-item button{font-family:inherit;font-size:.5rem;border:none;border-radius:2px;cursor:pointer;padding:.35rem .55rem}
+.save-load{background:#5a8a2a;color:#fff}
+.save-del{background:#8a2a2a;color:#fff}
+.saves-empty{font-size:.5rem;color:#666;padding:.4rem 0}
+
+/* ═══ SETTINGS SLIDERS ═══ */
+.setting-val{float:right;color:#f5c518}
+.slider{
+  -webkit-appearance:none;appearance:none;width:100%;height:10px;
+  background:#111;border:2px solid #444;border-radius:2px;outline:none;cursor:pointer
+}
+.slider:focus{border-color:#f5c518}
+.slider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:16px;height:20px;
+  background:#5a8a2a;border:2px solid #fff;border-radius:2px;cursor:pointer
+}
+.slider::-moz-range-thumb{
+  width:16px;height:20px;background:#5a8a2a;border:2px solid #fff;border-radius:2px;cursor:pointer
+}
+select.slider{
+  height:auto;padding:.5rem;color:#fff;font-family:inherit;font-size:.55rem
+}
+.form-group-row{display:flex;align-items:center;justify-content:space-between}
+.form-group-row label{margin-bottom:0}
+.form-group-row input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:#5a8a2a}
+.progress-wrap{margin-top:1.5rem}
+.progress-bar{width:100%;height:12px;background:#111;border:2px solid #444;overflow:hidden;border-radius:1px}
+.progress-bar div{height:100%;width:0%;background:#5a8a2a;transition:width .3s}
+#loadStatus{font-size:.5rem;color:#aaa;margin:.8rem 0}
+
+/* ═══ HUD ═══ */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:50}
+#hud.hidden{display:none}
+
+#fps-counter{
+  position:absolute;top:8px;right:10px;font-size:.55rem;color:#fff;
+  text-shadow:1px 1px #000;background:rgba(0,0,0,.35);padding:3px 6px
+}
+#coord-display{
+  position:absolute;top:8px;left:10px;font-size:.5rem;color:#fff;
+  text-shadow:1px 1px #000;background:rgba(0,0,0,.35);padding:3px 6px
+}
+
+/* Crosshair */
+#crosshair{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:1.4rem;color:#fff;text-shadow:0 0 3px #000;
+  line-height:1;width:20px;height:20px;display:flex;align-items:center;justify-content:center
+}
+
+/* Health + Hunger bars */
+#status-bars{
+  position:absolute;bottom:68px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:4px;align-items:center
+}
+#health-bar,#hunger-bar,#air-bar,#armor-bar{display:flex;gap:2px}
+.heart,.hunger,.bubble,.armor{font-size:.7rem;transition:opacity .2s}
+
+/* Pasek doświadczenia (XP) */
+#xp-bar{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);
+  width:320px;height:10px;background:#222;border:1px solid #111;border-radius:3px;overflow:visible}
+#xp-fill{height:100%;width:0%;background:linear-gradient(#8ef442,#4fb81e);border-radius:3px}
+#xp-level{position:absolute;left:50%;top:-14px;transform:translateX(-50%);
+  font-size:.7rem;color:#8ef442;text-shadow:1px 1px #000}
+
+/* Hotbar */
+#hotbar{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  display:flex;gap:3px
+}
+.hb-slot{
+  width:44px;height:44px;border:2px solid #555;background:rgba(0,0,0,.6);
+  position:relative;display:flex;align-items:center;justify-content:center;border-radius:2px
+}
+.hb-slot.active{border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.4)}
+.hb-block{width:28px;height:28px;image-rendering:pixelated;border:1px solid rgba(0,0,0,.4)}
+.hb-num{position:absolute;bottom:1px;right:3px;font-size:.35rem;color:#aaa}
+
+#selected-block-name{
+  position:absolute;bottom:58px;left:50%;transform:translateX(-50%);
+  font-size:.45rem;color:#fff;text-shadow:1px 1px #000;
+  background:rgba(0,0,0,.4);padding:3px 8px;white-space:nowrap
+}
+
+/* Break progress */
+#break-progress{
+  position:absolute;bottom:58px;left:50%;transform:translateX(-50%);
+  width:120px;height:8px;background:rgba(0,0,0,.5);border:1px solid #666;margin-top:2px;display:none
+}
+#break-progress.visible{display:block}
+#break-bar{height:100%;width:0%;background:#e05030;transition:width .05s}
+
+/* Game message popup */
+#game-msg{
+  position:absolute;top:25%;left:50%;transform:translateX(-50%);
+  font-size:.6rem;color:#fff;background:rgba(0,0,0,.7);padding:.5rem 1rem;
+  border-radius:2px;transition:opacity .5s;pointer-events:none
+}
