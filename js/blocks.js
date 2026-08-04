@@ -1027,10 +1027,14 @@ export function buildTextureAtlas() {
       c.fillStyle = '#e85050'; for (let i=0;i<5;i++) c.fillRect(x+2+Math.floor(r()*12), y+2+Math.floor(r()*12), 2, 1);
       c.fillStyle = '#6a0808'; c.fillRect(x, y+TILE-1, TILE, 1); }
 
-    // — lampa redstone (wygaszona) —
+    // — lampa redstone (wygaszona): obudowa w kratkę z 4 wygaszonymi „żarówkami" —
     { const x = tx(T.rs_lamp), y = ty(T.rs_lamp), r = mkRng(137);
-      fill(T.rs_lamp, '#6a5028'); noise(T.rs_lamp, ['#5a4420','#7a5c30'], 0.3, r);
-      c.fillStyle = '#8a6a38'; for (let a=2;a<TILE;a+=5) for (let b=2;b<TILE;b+=5){ c.fillRect(x+a,y+b,3,3); c.fillStyle='#4a3818'; c.fillRect(x+a+2,y+b+2,1,1); c.fillStyle='#8a6a38'; } }
+      fill(T.rs_lamp, '#7a6038'); noise(T.rs_lamp, ['#6a5028','#8a7048'], 0.25, r);
+      c.fillStyle = '#4a3818';   // ciemna ramka + krzyż dzielący na 4 panele
+      c.fillRect(x, y, TILE, 1); c.fillRect(x, y+TILE-1, TILE, 1);
+      c.fillRect(x, y, 1, TILE); c.fillRect(x+TILE-1, y, 1, TILE);
+      c.fillRect(x, y+7, TILE, 2); c.fillRect(x+7, y, 2, TILE);
+      for (const [px,py] of [[3,3],[11,3],[3,11],[11,11]]) { _disc(c, x+px, y+py, 2, '#3a2c14'); _disc(c, x+px, y+py, 1, '#584222'); } }
 
     // — piec —
     { const x = tx(T.furnace_top), y = ty(T.furnace_top), r = mkRng(138);
@@ -1212,11 +1216,14 @@ export function buildTextureAtlas() {
         c.fillStyle = '#c8a020'; c.fillRect(x+bx, y+4, 1, 11);
         c.fillStyle = '#e8c840'; c.fillRect(x+bx, y+3, 1, 3); } }
 
-    // lampa redstone (zaświecona): jak nieaktywna (rs_lamp), ale jasna siatka kropek
+    // lampa redstone (zaświecona): ta sama obudowa w kratkę, ale jarzące się „żarówki"
     { const r = mkRng(167); const x = tx(T.rs_lamp_on), y = ty(T.rs_lamp_on);
-      fill(T.rs_lamp_on, '#e8c868'); noise(T.rs_lamp_on, ['#f0d888','#d8b850'], 0.25, r);
-      for (let a=2;a<TILE;a+=5) for (let b=2;b<TILE;b+=5) {
-        c.fillStyle='#fff4c0'; c.fillRect(x+a,y+b,3,3); c.fillStyle='#ffe89a'; c.fillRect(x+a+1,y+b+1,1,1); } }
+      fill(T.rs_lamp_on, '#e8c868'); noise(T.rs_lamp_on, ['#f4d888','#dcb850'], 0.2, r);
+      c.fillStyle = '#c89838';   // ramka + krzyż, w tonie obudowy (ciemniejszy niż żarówki)
+      c.fillRect(x, y, TILE, 1); c.fillRect(x, y+TILE-1, TILE, 1);
+      c.fillRect(x, y, 1, TILE); c.fillRect(x+TILE-1, y, 1, TILE);
+      c.fillRect(x, y+7, TILE, 2); c.fillRect(x+7, y, 2, TILE);
+      for (const [px,py] of [[3,3],[11,3],[3,11],[11,11]]) { _disc(c, x+px, y+py, 2, '#fff4c0'); _disc(c, x+px, y+py, 1, '#ffffff'); } }
 
     // pył redstone: kamienne tło + krzyżujący się przewód (nieaktywny ciemny / aktywny jarzący)
     const dustWire = (id, wireCol, glow) => {
