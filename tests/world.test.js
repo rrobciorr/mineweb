@@ -1,7 +1,7 @@
 // Testy generacji rud (_oreAt) — czysta logika, bez renderu.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { World } from '../js/world.js';
+import { World, CHUNK_SIZE } from '../js/world.js';
 import { B } from '../js/blocks.js';
 
 const w = new World(12345);
@@ -36,4 +36,50 @@ test('rudy głębinowe nie pojawiają się nad swoim limitem', () => {
       assert.notEqual(o, B.REDSTONE_ORE, `redstone za wysoko (y=${y})`);
     }
   }
+});
+
+// ── REGRESJA: sąsiedzi nowo wczytanego chunka muszą się przebudować ──────────────
+// Bug: World.update() dodawał nowe chunki, ale nie oznaczał już wczytanych sąsiadów
+// jako dirty. Sąsiad zmeshowany PRZED wygenerowaniem tego chunka rysował swoją ścianę
+// graniczną zakładając, że za nią jest AIR (getBlock dla niewczytanego chunka zwraca
+// AIR) — po wygenerowaniu sąsiada ta „widmowa" ściana nakłada się na jego bryłę,
+// dając z-fighting nieprzezroczystych powierzchni, migoczący przy ruchu kamery
+// (najbardziej widoczne w gęstej zabudowie trybu miasto).
+test('REGRESJA: nowo wczytany chunk oznacza już wczytanych sąsiadów (orto) jako dirty', () => {
+  const world = new World(1, 'normal');
+  const cx = CHUNK_SIZE / 2;   // środek chunka (0,0)
+  world.update(cx, cx, 0);     // wczytaj tylko chunk (0,0)
+  const a = world.getChunk(0, 0);
+  assert.ok(a, 'chunk (0,0) powinien być wczytany');
+  a.dirty = false;             // symuluj, że renderer już go zmeshował (patrz buildChunkMesh)
+
+  world.update(cx, cx, 1);     // teraz dociągnij pierścień sąsiadów, w tym (1,0)
+  assert.ok(world.getChunk(1, 0), 'chunk (1,0) powinien być teraz wczytany');
+  assert.equal(a.dirty, true, 'chunk (0,0) powinien zostać oznaczony dirty po dodaniu sąsiada (1,0)');
+});
+
+test('chunk NIE jest oznaczany dirty, gdy żaden nowy sąsiad się nie pojawia', () => {
+  const world = new World(2, 'normal');
+  const cx = CHUNK_SIZE / 2;
+  world.update(cx, cx, 1);
+  const a = world.getChunk(0, 0);
+  a.dirty = false;
+  world.update(cx, cx, 1);     // powtórka bez zmiany promienia/pozycji — nic nowego
+  assert.equal(a.dirty, false, 'chunk nie powinien być oznaczany dirty bez nowego sąsiada');
+});
+
+test('diagonalny (nie-ortogonalny) nowy sąsiad NIE oznacza chunka dirty (brak wspólnej ściany)', () => {
+  const world = new World(3, 'normal');
+  const cx = CHUNK_SIZE / 2;
+  // Wczytaj (0,0) i jego bezpośredni pierścień OPRÓCZ rogu (1,1), symulując, że róg
+  // dojdzie później (asymetryczny ruch gracza).
+  world.update(cx, cx, 1);
+  const corner = world.getChunk(1, 1);
+  assert.ok(corner, 'chunk narożny powinien być wczytany przy promieniu 1');
+  // Usuń go i wymuś ponowne "dodanie" jako nowego sąsiada chunka (0,0).
+  world.chunks.delete('1,1');
+  const a = world.getChunk(0, 0);
+  a.dirty = false;
+  world.update(cx, cx, 1);     // odtwarza chunk (1,1) jako "nowy"
+  assert.equal(a.dirty, false, 'chunk (0,0) nie dzieli ściany z narożnym (1,1) — nie powinien być dirty');
 });

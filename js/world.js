@@ -902,6 +902,14 @@ export class World {
         this.generateChunk(ch);
         this.chunks.set(k, ch);
         added.push(ch);
+        // Sąsiednie już wczytane chunki mogły wcześniej wyrenderować ścianę graniczną
+        // zakładając, że ten chunk jest pusty (getBlock dla niewczytanego chunka = AIR).
+        // Trzeba je przebudować, inaczej ta „widmowa" ściana nakłada się na nową bryłę
+        // sąsiada (z-fighting nieprzezroczystych powierzchni, migoczący przy ruchu kamery).
+        for (const [ndx, ndz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          const nc = this.getChunk(cx2+ndx, cz2+ndz);
+          if (nc) nc.dirty = true;
+        }
       }
     }
 
