@@ -128,7 +128,7 @@ export class Renderer {
     this.transMat = new THREE.ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG_T,
       uniforms: { uBright: this._bright },
-      transparent: true, side: THREE.DoubleSide,
+      transparent: true, side: THREE.DoubleSide, depthWrite: false,
     });
     this.glowMat = new THREE.ShaderMaterial({   // redstone: pochodnia/lampa świecą
       vertexShader: VERT, fragmentShader: FRAG_GLOW, side: THREE.DoubleSide,
@@ -148,7 +148,7 @@ export class Renderer {
     this.texTransMat = new THREE.ShaderMaterial({
       vertexShader: VERT_TEX, fragmentShader: FRAG_TEX_T,
       uniforms: { uBright: this._bright, uTex: { value: this.atlasTex } },
-      transparent: true, side: THREE.DoubleSide,
+      transparent: true, side: THREE.DoubleSide, depthWrite: false,
     });
     this.texGlowMat = new THREE.ShaderMaterial({   // teksturowane bloki świecące (pochodnia/lampa redstone)
       vertexShader: VERT_TEX, fragmentShader: FRAG_TEX_GLOW,
@@ -156,7 +156,7 @@ export class Renderer {
       side: THREE.DoubleSide,
     });
     this.waterMat = new THREE.MeshBasicMaterial({
-      color: 0x1a5fcc, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
+      color: 0x1a5fcc, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false,
     });
     // Lawa i pochodnie świecą własnym światłem (MeshBasic ignoruje uBright).
     this.lavaMat = new THREE.MeshBasicMaterial({ color: 0xff6a10, side: THREE.DoubleSide });
