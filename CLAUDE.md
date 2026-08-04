@@ -109,3 +109,17 @@ Po każdej zmianie **zrób deploy i sprawdź, czy serwer wysyła najnowszą wers
    które same w sobie nie wymagają deployu (np. tylko `CLAUDE.md`/`DEPLOY.md`, które i tak
    nie są deployowane, patrz sekcja *Uruchomienie i deploy*). Bez tego historia zmian w GitHub
    będzie niekompletna.
+
+## Praca równoległa (kilka sesji Claude Code)
+Nad `~/minecraft-web` może w tym samym czasie pracować **kilka niezależnych sesji Claude Code**
+(np. kilka równoległych instancji na tym serwerze). Żeby nie nadpisywać cudzej pracy ani nie
+podpinać cudzych zmian pod własny commit:
+1. **Na start pracy zrób `git pull`** — zanim zaczniesz edytować, upewnij się, że masz
+   najświeższy stan repo.
+2. **Przed `git add -A` zrób `git status` / `git diff`** i przejrzyj listę zmienionych plików.
+   Jeśli widzisz zmiany, których sam nie wprowadziłeś (inny plik albo inny fragment kodu niż
+   Twoja edycja) — nie zgarniaj ich pod swój opis commita. Commituj tylko to, co faktycznie
+   zmieniłeś (`git add <plik>` zamiast `git add -A`), albo zapytaj użytkownika, jak podzielić
+   pracę między sesjami.
+3. Jeśli `git push` zostanie odrzucony (bo inna sesja wypchnęła coś wcześniej) — zrób
+   `git pull` i połącz zmiany, zamiast force-push.
