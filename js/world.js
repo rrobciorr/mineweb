@@ -254,30 +254,67 @@ export class World {
     ARM_R: 4,                        // promień korytarzy-szprych
     RING_R: 28, RING_TUBE: 5,        // pierścień mieszkalny (torus)
     SOLAR_OUT: 46, SOLAR_HALF: 10,   // panele słoneczne wzdłuż osi ±X
+    POD_DIST: 36, POD_ARM_R: 3, POD_R: 5,  // moduły-kapsuły po przekątnych + korytarze do nich
     Y_LO: 34, Y_HI: 74,              // zakres pionowy generacji (dno hubu … szczyt kopuły)
   };
+
+  // Cztery dodatkowe moduły po przekątnych (NE/NW/SE/SW), każdy z osobnym motywem —
+  // rozszerzają hub o nowe funkcje poza istniejącym hubem/pierścieniem/szprychami X/Z.
+  static PODS = [
+    { key: 'laboratory',  dx: Math.SQRT1_2,  dz: Math.SQRT1_2 },   // NE: laboratorium
+    { key: 'cargo',       dx: -Math.SQRT1_2, dz: Math.SQRT1_2 },   // NW: ładownia
+    { key: 'observatory', dx: Math.SQRT1_2,  dz: -Math.SQRT1_2 },  // SE: obserwatorium
+    { key: 'engineering', dx: -Math.SQRT1_2, dz: -Math.SQRT1_2 },  // SW: warsztat inżynieryjny
+  ];
 
   // ── SDF modułów: odległość komórki od osi/rdzenia danego modułu ──────────────
   _capHub(wx, wy, wz) { const S = World.STATION; const t = Math.max(S.HUB_B, Math.min(S.HUB_T, wy)); return Math.hypot(wx, wy - t, wz); }
   _capArmX(wx, wy, wz) { const S = World.STATION; const t = Math.max(-S.RING_R, Math.min(S.RING_R, wx)); return Math.hypot(wx - t, wy - S.CY, wz); }
   _capArmZ(wx, wy, wz) { const S = World.STATION; const t = Math.max(-S.RING_R, Math.min(S.RING_R, wz)); return Math.hypot(wx, wy - S.CY, wz - t); }
   _torusRing(wx, wy, wz) { const S = World.STATION; const dxz = Math.hypot(wx, wz); return Math.hypot(dxz - S.RING_R, wy - S.CY); }
+  // Korytarz do modułu-kapsuły: kapsuła od centrum stacji do środka modułu wzdłuż (pod.dx,pod.dz).
+  _podArm(wx, wy, wz, pod) {
+    const S = World.STATION;
+    const t = Math.max(0, Math.min(S.POD_DIST, wx * pod.dx + wz * pod.dz));
+    return Math.hypot(wx - pod.dx * t, wy - S.CY, wz - pod.dz * t);
+  }
+  // Kulisty moduł na końcu korytarza.
+  _podSphere(wx, wy, wz, pod) {
+    const S = World.STATION;
+    return Math.hypot(wx - pod.dx * S.POD_DIST, wy - S.CY, wz - pod.dz * S.POD_DIST);
+  }
+  // Moduł (obiekt z World.PODS), w którym leży dana komórka — do doboru materiału/wyposażenia.
+  _podAt(wx, wy, wz) {
+    const S = World.STATION;
+    for (const pod of World.PODS) {
+      if (this._podArm(wx, wy, wz, pod) <= S.POD_ARM_R || this._podSphere(wx, wy, wz, pod) <= S.POD_R) return pod;
+    }
+    return null;
+  }
 
   // Wnętrze (wydrążenie) i bryła (kadłub) = suma modułów. Wnętrze ma promień o T=1 mniejszy,
   // więc na złączach modułów wnętrza nachodzą na siebie → przejścia są otwarte.
   _stationCavity(wx, wy, wz) {
     const S = World.STATION;
-    return this._capHub(wx, wy, wz) <= S.HUB_R - 1
+    if (this._capHub(wx, wy, wz) <= S.HUB_R - 1
         || this._capArmX(wx, wy, wz) <= S.ARM_R - 1
         || this._capArmZ(wx, wy, wz) <= S.ARM_R - 1
-        || this._torusRing(wx, wy, wz) <= S.RING_TUBE - 1;
+        || this._torusRing(wx, wy, wz) <= S.RING_TUBE - 1) return true;
+    for (const pod of World.PODS) {
+      if (this._podArm(wx, wy, wz, pod) <= S.POD_ARM_R - 1 || this._podSphere(wx, wy, wz, pod) <= S.POD_R - 1) return true;
+    }
+    return false;
   }
   _stationSolid(wx, wy, wz) {
     const S = World.STATION;
-    return this._capHub(wx, wy, wz) <= S.HUB_R
+    if (this._capHub(wx, wy, wz) <= S.HUB_R
         || this._capArmX(wx, wy, wz) <= S.ARM_R
         || this._capArmZ(wx, wy, wz) <= S.ARM_R
-        || this._torusRing(wx, wy, wz) <= S.RING_TUBE;
+        || this._torusRing(wx, wy, wz) <= S.RING_TUBE) return true;
+    for (const pod of World.PODS) {
+      if (this._podArm(wx, wy, wz, pod) <= S.POD_ARM_R || this._podSphere(wx, wy, wz, pod) <= S.POD_R) return true;
+    }
+    return false;
   }
 
   // Szybki odrzut pustych kolumn (bez pełnej pętli po Y) — po rzucie XZ modułów.
@@ -289,6 +326,11 @@ export class World {
     if (Math.abs(wx) <= S.ARM_R + 1 && Math.abs(wz) <= S.RING_R + 1) return true;    // szprycha Z
     if (Math.abs(dxz - S.RING_R) <= S.RING_TUBE + 1) return true;                    // pierścień
     if (Math.abs(wz) <= S.SOLAR_HALF && Math.abs(wx) > S.RING_R + S.RING_TUBE && Math.abs(wx) <= S.SOLAR_OUT) return true; // panele
+    for (const pod of World.PODS) {
+      const t = Math.max(0, Math.min(S.POD_DIST, wx * pod.dx + wz * pod.dz));
+      if (Math.hypot(wx - pod.dx * t, wz - pod.dz * t) <= S.POD_ARM_R + 1) return true;       // korytarz do modułu
+      if (Math.hypot(wx - pod.dx * S.POD_DIST, wz - pod.dz * S.POD_DIST) <= S.POD_R + 1) return true;  // sam moduł
+    }
     return false;
   }
 
@@ -317,13 +359,28 @@ export class World {
     return this._solarWing(wx, wy, wz);
   }
 
-  // Kadłub: żelazo z poziomymi pasami okien; przeszklona kopuła na szczycie hubu.
+  // Kadłub: żelazo z poziomymi pasami okien; przeszklona kopuła na szczycie hubu;
+  // moduły-kapsuły (World.PODS) mają własny, odróżniający je motyw kadłuba.
   _stationHull(wx, wy, wz) {
     const S = World.STATION;
     if (wy >= S.HUB_T && Math.hypot(wx, wy - S.HUB_T, wz) <= S.HUB_R + 0.5) return B.GLASS;  // kopuła
+    const pod = this._podAt(wx, wy, wz);
+    if (pod && this._podSphere(wx, wy, wz, pod) <= S.POD_R) return this._podHull(pod, wy);
     const wm = ((wy % 4) + 4) % 4;
     if (wm === 1 || wm === 2) return B.GLASS;   // pas okien wysoki na 2 bloki, co 4 bloki wysokości
     return B.IRON_BLOCK;
+  }
+
+  // Motyw kadłuba kuli modułu — inny dla każdego z 4 modułów po przekątnych.
+  _podHull(pod, wy) {
+    const band = ((wy % 3) + 3) % 3 === 0;   // pas co 3 bloki wysokości
+    switch (pod.key) {
+      case 'laboratory':  return band ? B.GLASS : B.QUARTZ;           // czysty, jasny moduł badawczy
+      case 'observatory':  return B.GLASS;                            // niemal cała kula szklana
+      case 'cargo':        return B.IRON_BLOCK;                       // szczelna ładownia, bez okien
+      case 'engineering':  return band ? B.REDSTONE_BLOCK : B.IRON_BLOCK; // pasy ostrzegawcze
+      default:              return B.IRON_BLOCK;
+    }
   }
 
   // Wnętrze modułów: przestronna próżnia z oświetleniem pod sufitem i rzadkim wyposażeniem
@@ -346,7 +403,20 @@ export class World {
     if (this._capHub(wx, wy, wz) <= S.HUB_R) return r < 0.5 ? B.CRAFTING_TABLE : B.BOOKSHELF;      // mostek dowodzenia
     if (this._torusRing(wx, wy, wz) <= S.RING_TUBE) return r < 0.4 ? B.BED : (r < 0.7 ? B.CHEST : B.BOOKSHELF);  // moduły mieszkalne
     if (this._capArmX(wx, wy, wz) <= S.ARM_R) return r < 0.5 ? B.CHEST : B.FURNACE;                // magazyny (szprychy X)
+    const pod = this._podAt(wx, wy, wz);
+    if (pod) return this._podProp(pod, r);
     return r < 0.5 ? B.PUMPKIN : B.MELON;                                                          // szklarnie (szprychy Z)
+  }
+
+  // Wyposażenie modułu po przekątnej — zależne od jego motywu (World.PODS).
+  _podProp(pod, r) {
+    switch (pod.key) {
+      case 'laboratory':   return r < 0.4 ? B.CRAFTING_TABLE : (r < 0.7 ? B.FURNACE : B.BOOKSHELF);
+      case 'cargo':        return r < 0.6 ? B.CHEST : B.IRON_BLOCK;
+      case 'observatory':  return r < 0.6 ? B.BOOKSHELF : B.CRAFTING_TABLE;
+      case 'engineering':  return r < 0.4 ? B.FURNACE : (r < 0.75 ? B.PISTON : B.RS_LAMP_ON);
+      default:              return 0;
+    }
   }
 
   // Panele słoneczne: dwa skrzydła (ogniwa z lapisu na żelaznym wysięgniku) wzdłuż osi ±X.
