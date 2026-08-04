@@ -97,3 +97,15 @@ Po każdej zmianie **zrób deploy i sprawdź, czy serwer wysyła najnowszą wers
      `curl -s "https://robcior.pl/minecraft/js/main.js?v=<nowa_wersja>" | grep <fragment_zmiany>`
    - Jeśli serwer wciąż zwraca starą wersję → podbij `?v=` i wdróż ponownie (patrz
      sekcja *Cache-busting*).
+3. **Zrób commit i push na GitHub** (kontrola wersji): `~/minecraft-web` jest repozytorium git
+   (remote `origin` → [github.com/rrobciorr/mineweb](https://github.com/rrobciorr/mineweb)):
+   ```bash
+   cd ~/minecraft-web
+   git add -A
+   git commit -m "<krótki opis zmiany>"
+   git push
+   ```
+   Rób to za **każdym razem**, gdy zmieniasz coś w `~/minecraft-web` — także dla zmian,
+   które same w sobie nie wymagają deployu (np. tylko `CLAUDE.md`/`DEPLOY.md`, które i tak
+   nie są deployowane, patrz sekcja *Uruchomienie i deploy*). Bez tego historia zmian w GitHub
+   będzie niekompletna.
