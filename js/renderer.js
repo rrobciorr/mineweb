@@ -94,6 +94,18 @@ const FRAG_TEX_T = `
     gl_FragColor = vec4(t.rgb * vSh * uBright, t.a);   // szkło (półprzezroczyste)
   }
 `;
+// Teksturowane bloki świecące (pochodnia/lampa redstone): jak FRAG_TEX, ale bez uBright —
+// świecą pełnym kolorem tekstury niezależnie od pory dnia.
+const FRAG_TEX_GLOW = `
+  uniform sampler2D uTex;
+  varying vec2 vUV;
+  varying float vSh;
+  void main() {
+    vec4 t = texture2D(uTex, vUV);
+    if (t.a < 0.3) discard;
+    gl_FragColor = vec4(t.rgb * vSh, 1.0);
+  }
+`;
 
 export class Renderer {
   constructor(canvas) {
@@ -137,6 +149,11 @@ export class Renderer {
       vertexShader: VERT_TEX, fragmentShader: FRAG_TEX_T,
       uniforms: { uBright: this._bright, uTex: { value: this.atlasTex } },
       transparent: true, side: THREE.DoubleSide,
+    });
+    this.texGlowMat = new THREE.ShaderMaterial({   // teksturowane bloki świecące (pochodnia/lampa redstone)
+      vertexShader: VERT_TEX, fragmentShader: FRAG_TEX_GLOW,
+      uniforms: { uTex: { value: this.atlasTex } },
+      side: THREE.DoubleSide,
     });
     this.waterMat = new THREE.MeshBasicMaterial({
       color: 0x1a5fcc, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
@@ -373,7 +390,8 @@ export class Renderer {
     const TR = { p:[] };  // pochodnie
     const TX = { p:[], u:[], sh:[] };   // teksturowane, nieprzezroczyste
     const TXT = { p:[], u:[], sh:[] };  // teksturowane, przezroczyste (szkło)
-    const G = { p:[], c:[] };           // świecące (redstone: pochodnia/lampa) — ignoruje uBright
+    const G = { p:[], c:[] };           // świecące bez tekstury (fallback) — ignoruje uBright
+    const TXG = { p:[], u:[], sh:[] };  // świecące teksturowane (redstone: pochodnia/lampa) — ignoruje uBright
 
     const push6 = (bkt, verts, r, g, b) => {
       const [v0,v1,v2,v3] = verts;
@@ -455,7 +473,15 @@ export class Renderer {
             } else if (b === B.TORCH) {
               push6(TR, absVerts, 0,0,0);
             } else if (b === B.RS_TORCH || b === B.RS_LAMP_ON) {
-              push6(G, absVerts, baseCol[0], baseCol[1], baseCol[2]);   // świeci pełnym kolorem
+              if (tf) {
+                // teksturowany blok świecący: wylicz UV, ale ignoruj uBright (patrz TXG/texGlowMat)
+                const tile = face.s===1 ? tf[0] : face.s===2 ? tf[1] : tf[2];
+                const [u0,u1,v0,v1] = faceUV(tile);
+                const uvq = face.uvs.map(([uf,vf]) => [u0 + uf*(u1-u0), v0 + vf*(v1-v0)]);
+                push6tex(TXG, absVerts, uvq, sh);
+              } else {
+                push6(G, absVerts, baseCol[0], baseCol[1], baseCol[2]);   // brak tekstury: świeci pełnym kolorem
+              }
             } else if (tf) {
               // teksturowany blok: wylicz UV wybranego kafelka
               const tile = face.s===1 ? tf[0] : face.s===2 ? tf[1] : tf[2];
@@ -510,6 +536,7 @@ export class Renderer {
     meshes.lava  = make(L, this.lavaMat, false);
     meshes.torch = make(TR, this.torchMat, false);
     meshes.glow  = make(G, this.glowMat, true);
+    meshes.texGlow = makeTex(TXG, this.texGlowMat);
     this.chunkMeshes.set(key, meshes);
     chunk.dirty = false;
   }

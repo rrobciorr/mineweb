@@ -321,7 +321,8 @@ export class World {
   _stationHull(wx, wy, wz) {
     const S = World.STATION;
     if (wy >= S.HUB_T && Math.hypot(wx, wy - S.HUB_T, wz) <= S.HUB_R + 0.5) return B.GLASS;  // kopuła
-    if ((((wy % 4) + 4) % 4) === 1) return B.GLASS;   // pas okien co 4 bloki wysokości
+    const wm = ((wy % 4) + 4) % 4;
+    if (wm === 1 || wm === 2) return B.GLASS;   // pas okien wysoki na 2 bloki, co 4 bloki wysokości
     return B.IRON_BLOCK;
   }
 
